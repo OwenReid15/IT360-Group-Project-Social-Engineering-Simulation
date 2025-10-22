@@ -1,1 +1,19 @@
-this is where are bash script is gonna be
+#!/bin/bash
+
+INPUT_IMAGE="evidence.dd"
+WORK_DIR="output"
+
+# Step 1: Hash original
+hashdeep -r $INPUT_IMAGE > $WORK_DIR/original_hashes.txt
+
+# Step 2: Extract artifacts
+bulk_extractor -o $WORK_DIR/bulk $INPUT_IMAGE
+
+# Step 3: Extract MIME attachments
+mkdir $WORK_DIR/attachments
+for email in $WORK_DIR/bulk/email*; do
+    ripmime --in "$email" --dir $WORK_DIR/attachments
+done
+
+# Step 4: Hash outputs
+hashdeep -r $WORK_DIR > $WORK_DIR/output_hashes.txt
