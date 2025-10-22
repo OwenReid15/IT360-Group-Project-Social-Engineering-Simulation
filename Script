@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INPUT_IMAGE="evidence.dd"
+INPUT_IMAGE="evidence.dd" //this would be the disc image
 WORK_DIR="output"
 
 # Step 1: Hash original
