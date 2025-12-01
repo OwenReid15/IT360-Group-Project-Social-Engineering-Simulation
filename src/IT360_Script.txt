@@ -1,181 +1,93 @@
 #!/bin/bash
-set -euo pipefail
 
-#############################
-#  INTERRUPT HANDLING (15)
-#############################
-cleanup() {
-    echo
-    echo "[!] Script interrupted. Marking run as INCOMPLETE."
-    echo "[!] Run directory: $rundir"
-    echo "[!] Exiting..."
-    exit 1
-}
-trap cleanup INT TERM
+set -e
 
-
-#############################
-#  VARIABLES
-#############################
 outdir="script_output_IT360"
-mkdir -p "$outdir"
 
-
-#############################
-#  TOOL CHECK
-#############################
+# Check if tools are installed on the system.
 echo "[+] Checking required tools..."
-for t in hashdeep bulk_extractor exiftool file; do
-    if ! command -v "$t" >/dev/null 2>&1; then
-        echo "[!] ERROR: $t not found. Install it first."
-        exit 1
-    fi
+for t in hashdeep bulk_extractor exiftool; do
+    command -v $t >/dev/null 2>&1 || { 
+        echo "[!] ERROR: $t not found. Install it first."; 
+        exit 1; 
+    }
 done
 echo "[+] All required tools found."
 echo
 
 
-#############################
-#  SAFE INPUT HANDLING (14)
-#############################
-read -r -p "Enter the evidence file path: " file
+# Get the evidence file form user
+read -p "Enter the evidence file path: " file
 
-if [[ -z "$file" ]]; then
-    echo "[!] ERROR: No file provided."
-    exit 1
-fi
-
-if [[ ! -e "$file" ]]; then
+if [ ! -f "$file" ]; then
     echo "[!] ERROR: Cannot find evidence file: $file"
     exit 1
 fi
 
-if [[ ! -r "$file" ]]; then
-    echo "[!] ERROR: Evidence file is not readable."
-    exit 1
-fi
-
-# Convert to absolute path
-file="$(readlink -f "$file")"
+mkdir -p "$outdir"
 
 
-#############################
-#  DETECT FILE TYPE (3)
-#############################
-echo "[+] Detecting file type..."
-ftype=$(file -b "$file")
-echo "[+] File type: $ftype"
-echo
-
-
-#############################
-#  CREATE RUN DIRECTORY
-#############################
-echo "[+] Finding next run number..."
-last=$(find "$outdir" -maxdepth 1 -type d -name "run_*" | sort -V | tail -n1)
-
-if [[ -z "$last" ]]; then
+# Find the run number. 
+echo "[+] Find the run number"
+last=$(find "$outdir" -maxdepth 1 -type d -name "run_*" 2>/dev/null | sort -V | tail -n1)
+if [ -z "$last" ]; then
     num=1
 else
     num=$(basename "$last" | sed 's/[^0-9]//g')
     num=$((10#$num + 1))
 fi
 
-rundir=$(printf "%s/run_%03d" "$outdir" "$num")
+rundir=$(printf "$outdir/run_%03d" $num)
 mkdir -p "$rundir/bulk"
 
-logfile="$rundir/run.log"
-
 echo "[+] Creating run directory: $rundir"
-echo "[+] Logging to: $logfile"
 echo
 
 
-#############################
-#  ENABLE TIMESTAMP LOGGING (11)
-#############################
-exec > >(awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0 }' | tee -a "$logfile") 2>&1
+# Make the log file
+logfile="$rundir/run.log"
+echo "[+] Logging all output to: $logfile"
+exec > >(tee -a "$logfile") 2>&1
+echo
 
-
-#############################
-#  HEADER
-#############################
 echo "============================================================"
-echo " Evidence Processing Script"
-echo " Run #: $num"
-echo " Date : $(date)"
-echo " File : $file"
-echo " Type : $ftype"
+echo "  Evidence Processing Script"
+echo "  Run #: $num"
+echo "  Date : $(date)"
+echo "  File : $file"
 echo "============================================================"
 echo
 
 
-#############################
-#  STEP 1 – HASH (BEFORE)
-#############################
-echo "[1/5] Hashing evidence file (initial integrity check)"
-hashdeep "$file" > "$rundir/hash_before.txt"
-echo "[+] Saved: hash_before.txt"
+# STEP 1 – Hash the evidence file
+echo "[1/5] Hashing evidence file using hashdeep"
+hashdeep "$file" > "$rundir/file_hash.txt"
+echo "[+] Hash saved to: file_hash.txt"
 echo
 
-
-#############################
-#  STEP 2 – METADATA (ORIGINAL)
-#############################
-echo "[2/5] Extracting metadata from evidence"
+# STEP 2 – Extract metadata from the evidence file
+echo "[2/5] Collecting metadata with exiftool"
 exiftool "$file" > "$rundir/file_metadata.txt"
-echo "[+] Saved: file_metadata.txt"
+echo "[+] Metadata saved to: file_metadata.txt"
 echo
 
 
-#############################
-#  STEP 3 – BULK EXTRACTOR (FAST MODE)
-#############################
-echo "[3/5] Running bulk_extractor with max CPU threads (5)"
-threads=$(nproc)
-bulk_extractor -j "$threads" -o "$rundir/bulk" "$file"
-echo "[+] Bulk artifacts saved to: $rundir/bulk/"
+# STEP 3 – Run bulk extractor
+echo "[3/5] Extracting artifacts/files with bulk extractor"
+bulk_extractor -o "$rundir/bulk" "$file"
+echo "[+] bulk extractor artifacts saved to: $rundir/bulk/"
 echo
 
 
-#############################
-#  STEP 4 – METADATA (EXTRACTED)
-#############################
-echo "[4/5] Extracting metadata from bulk artifacts"
+# STEP 4 – Extract metadata from extracted files from bulk extractor.
+echo "[4/5] Running exiftool on extracted files form bulk extractor"
 exiftool -r "$rundir/bulk" > "$rundir/bulk_metadata.txt"
-echo "[+] Saved: bulk_metadata.txt"
+echo "[+] Bulk extractor artifacts metadata saved to: bulk_metadata.txt"
 echo
 
 
-#############################
-#  STEP 5 – HASH (AFTER + INTEGRITY CHECK) (1)
-#############################
-echo "[5/5] Re-hashing evidence file (post-process integrity check)"
-hashdeep "$file" > "$rundir/hash_after.txt"
-
-# Compare
-if diff "$rundir/hash_before.txt" "$rundir/hash_after.txt" >/dev/null; then
-    echo "[+] Integrity verified: hashes match"
-else
-    echo "[!] WARNING: Hash mismatch — evidence may have changed!"
-fi
-echo
-
-
-#############################
-#  SUMMARY (10)
-#############################
+# Finished
 echo "============================================================"
-echo " Summary for run #$num"
-echo "============================================================"
-echo " Evidence File         : $file"
-echo " File Type             : $ftype"
-echo " Threads Used (bulk)   : $threads"
-echo " Hash Match?           : $( if diff "$rundir/hash_before.txt" "$rundir/hash_after.txt" >/dev/null; then echo YES; else echo NO; fi )"
-echo " Metadata Files        : file_metadata.txt, bulk_metadata.txt"
-echo " Bulk Artifact Count   : $(find "$rundir/bulk" -type f | wc -l)"
-echo " Log File              : run.log"
-echo "============================================================"
-echo "[+] Finished run #$num at $(date)"
+echo "[+] Finished run #$num @ $(date)"
 echo "[+] Results stored in: $rundir"
 echo "============================================================"
