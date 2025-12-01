@@ -1,12 +1,11 @@
+
 #!/bin/bash
 
 set -e
 
 outdir="script_output_IT360"
 
-# ------------------------------------------------------------
-# CHECK REQUIREMENTS
-# ------------------------------------------------------------
+# Check if tools are installed on the system.
 echo "[+] Checking required tools..."
 for t in hashdeep bulk_extractor exiftool; do
     command -v $t >/dev/null 2>&1 || { 
@@ -17,9 +16,8 @@ done
 echo "[+] All required tools found."
 echo
 
-# ------------------------------------------------------------
-# GET INPUT FILE
-# ------------------------------------------------------------
+
+# Get the evidence file form user
 read -p "Enter the evidence file path: " file
 
 if [ ! -f "$file" ]; then
@@ -29,10 +27,9 @@ fi
 
 mkdir -p "$outdir"
 
-# ------------------------------------------------------------
-# DETERMINE RUN NUMBER
-# ------------------------------------------------------------
-echo "[+] Determining run number..."
+
+# Find the run number. 
+echo "[+] Find the run number"
 last=$(find "$outdir" -maxdepth 1 -type d -name "run_*" 2>/dev/null | sort -V | tail -n1)
 if [ -z "$last" ]; then
     num=1
@@ -47,70 +44,52 @@ mkdir -p "$rundir/bulk"
 echo "[+] Creating run directory: $rundir"
 echo
 
-# ------------------------------------------------------------
-# SET UP LOGGING
-# ------------------------------------------------------------
+
+# Make the log file
 logfile="$rundir/run.log"
 echo "[+] Logging all output to: $logfile"
 exec > >(tee -a "$logfile") 2>&1
 echo
 
 echo "============================================================"
-echo "  IT360 Evidence Processing Script"
+echo "  Evidence Processing Script"
 echo "  Run #: $num"
 echo "  Date : $(date)"
 echo "  File : $file"
 echo "============================================================"
 echo
 
-# ------------------------------------------------------------
-# STEP 1 – HASH ORIGINAL EVIDENCE FILE
-# ------------------------------------------------------------
-echo "[1/5] Hashing evidence file using hashdeep..."
+
+# STEP 1 – Hash the evidence file
+echo "[1/5] Hashing evidence file using hashdeep"
 hashdeep "$file" > "$rundir/file_hash.txt"
 echo "[+] Hash saved to: file_hash.txt"
 echo
 
-# ------------------------------------------------------------
-# STEP 2 – EXTRACT METADATA FROM ORIGINAL FILE
-# ------------------------------------------------------------
-echo "[2/5] Collecting metadata with exiftool..."
+# STEP 2 – Extract metadata from the evidence file
+echo "[2/5] Collecting metadata with exiftool"
 exiftool "$file" > "$rundir/file_metadata.txt"
 echo "[+] Metadata saved to: file_metadata.txt"
 echo
 
-# ------------------------------------------------------------
-# STEP 3 – RUN BULK_EXTRACTOR
-# ------------------------------------------------------------
-echo "[3/5] Extracting artifacts with bulk_extractor..."
-echo "     (This may take a while depending on file size)"
+
+# STEP 3 – Run bulk extractor
+echo "[3/5] Extracting artifacts/files with bulk extractor"
 bulk_extractor -o "$rundir/bulk" "$file"
-echo "[+] bulk_extractor artifacts saved to: $rundir/bulk/"
+echo "[+] bulk extractor artifacts saved to: $rundir/bulk/"
 echo
 
-# ------------------------------------------------------------
-# STEP 4 – EXTRACT METADATA FROM BULK_EXTRACTOR OUTPUT
-# ------------------------------------------------------------
-echo "[4/5] Running exiftool on extracted artifacts..."
+
+# STEP 4 – Extract metadata from extracted files from bulk extractor.
+echo "[4/5] Running exiftool on extracted files form bulk extractor"
 exiftool -r "$rundir/bulk" > "$rundir/bulk_metadata.txt"
-echo "[+] Bulk artifact metadata saved to: bulk_metadata.txt"
+echo "[+] Bulk extractor artifacts metadata saved to: bulk_metadata.txt"
 echo
 
-# ------------------------------------------------------------
-# STEP 5 – HASH ALL BULK_EXTRACTOR FILE OUTPUTS
-# ------------------------------------------------------------
-echo "[5/5] Hashing all extracted bulk_extractor files..."
-find "$rundir/bulk" -type f 2>/dev/null | xargs hashdeep -r > "$rundir/files_hash.txt" 2>/dev/null || touch "$rundir/files_hash.txt"
 
-files=$(wc -l < "$rundir/files_hash.txt")
-echo "[+] Hashing complete. Total hashed files: $files"
-echo "[+] Saved to: files_hash.txt"
-echo
+# Finished
+echo "============================================================"
+echo "[+] Finished run #$num @ $(date)"
+echo "[+] Results stored in: $rundir"
+echo "============================================================"
 
-# ------------------------------------------------------------
-# FINISHED
-# ------------------------------------------------------------
-echo "============================================================"
-echo "[✓] Finished run #$num @ $(date)"
-echo "[✓] Results stored in: $rundir"
-echo "============================================================"
