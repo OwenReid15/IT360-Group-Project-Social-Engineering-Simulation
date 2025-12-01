@@ -1,1 +1,7 @@
 
+this is just to show what data set we used.
+https://github.com/sunknighteric/EPVME-Dataset.git
+
+we used this data set but the tool should work with any data set. 
+
+Must download hashdeep, bulk_extractor, and exiftool.
