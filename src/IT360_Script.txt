@@ -1,0 +1,93 @@
+#!/bin/bash
+
+set -e
+
+outdir="script_output_IT360"
+
+# Check if tools are installed on the system.
+echo "[+] Checking required tools..."
+for t in hashdeep bulk_extractor exiftool; do
+    command -v $t >/dev/null 2>&1 || { 
+        echo "[!] ERROR: $t not found. Install it first."; 
+        exit 1; 
+    }
+done
+echo "[+] All required tools found."
+echo
+
+
+# Get the evidence file form user
+read -p "Enter the evidence file path: " file
+
+if [ ! -f "$file" ]; then
+    echo "[!] ERROR: Cannot find evidence file: $file"
+    exit 1
+fi
+
+mkdir -p "$outdir"
+
+
+# Find the run number. 
+echo "[+] Find the run number"
+last=$(find "$outdir" -maxdepth 1 -type d -name "run_*" 2>/dev/null | sort -V | tail -n1)
+if [ -z "$last" ]; then
+    num=1
+else
+    num=$(basename "$last" | sed 's/[^0-9]//g')
+    num=$((10#$num + 1))
+fi
+
+rundir=$(printf "$outdir/run_%03d" $num)
+mkdir -p "$rundir/bulk"
+
+echo "[+] Creating run directory: $rundir"
+echo
+
+
+# Make the log file
+logfile="$rundir/run.log"
+echo "[+] Logging all output to: $logfile"
+exec > >(tee -a "$logfile") 2>&1
+echo
+
+echo "============================================================"
+echo "  Evidence Processing Script"
+echo "  Run #: $num"
+echo "  Date : $(date)"
+echo "  File : $file"
+echo "============================================================"
+echo
+
+
+# STEP 1 – Hash the evidence file
+echo "[1/5] Hashing evidence file using hashdeep"
+hashdeep "$file" > "$rundir/file_hash.txt"
+echo "[+] Hash saved to: file_hash.txt"
+echo
+
+# STEP 2 – Extract metadata from the evidence file
+echo "[2/5] Collecting metadata with exiftool"
+exiftool "$file" > "$rundir/file_metadata.txt"
+echo "[+] Metadata saved to: file_metadata.txt"
+echo
+
+
+# STEP 3 – Run bulk extractor
+echo "[3/5] Extracting artifacts/files with bulk extractor"
+bulk_extractor -o "$rundir/bulk" "$file"
+echo "[+] bulk extractor artifacts saved to: $rundir/bulk/"
+echo
+
+
+# STEP 4 – Extract metadata from extracted files from bulk extractor.
+echo "[4/5] Running exiftool on extracted files form bulk extractor"
+exiftool -r "$rundir/bulk" > "$rundir/bulk_metadata.txt"
+echo "[+] Bulk extractor artifacts metadata saved to: bulk_metadata.txt"
+echo
+
+
+# Finished
+echo "============================================================"
+echo "[+] Finished run #$num @ $(date)"
+echo "[+] Results stored in: $rundir"
+echo "============================================================"
