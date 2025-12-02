@@ -60,27 +60,27 @@ echo
 
 
 # STEP 1 – Hash the evidence file
-echo "[1/5] Hashing evidence file using hashdeep"
+echo "[1/4] Hashing evidence file using hashdeep"
 hashdeep "$file" > "$rundir/file_hash.txt"
 echo "[+] Hash saved to: file_hash.txt"
 echo
 
 # STEP 2 – Extract metadata from the evidence file
-echo "[2/5] Collecting metadata with exiftool"
+echo "[2/4] Collecting metadata with exiftool"
 exiftool "$file" > "$rundir/file_metadata.txt"
 echo "[+] Metadata saved to: file_metadata.txt"
 echo
 
 
 # STEP 3 – Run bulk extractor
-echo "[3/5] Extracting artifacts/files with bulk extractor"
+echo "[3/4] Extracting artifacts/files with bulk extractor"
 bulk_extractor -o "$rundir/bulk" "$file"
 echo "[+] bulk extractor artifacts saved to: $rundir/bulk/"
 echo
 
 
 # STEP 4 – Extract metadata from extracted files from bulk extractor.
-echo "[4/5] Running exiftool on extracted files form bulk extractor"
+echo "[4/4] Running exiftool on extracted files form bulk extractor"
 exiftool -r "$rundir/bulk" > "$rundir/bulk_metadata.txt"
 echo "[+] Bulk extractor artifacts metadata saved to: bulk_metadata.txt"
 echo
