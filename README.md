@@ -8,12 +8,16 @@ This project is a digital forensics automation tool built using a Bash script.Th
 Features:
 File Hashing (Hashdeep):
 Creates hashes of the input file to support integrity checking.
+
 Artifact Extraction (Bulk Extractor):
 Automatically extracts emails, URLs, credit card patterns, and other digital artifacts.
+
 Metadata Collection (ExifTool):
 Pulls metadata from the file and from extracted content form bulk extractor.
+
 Automated Workflow:
 Combines all three tools into a single script, reducing manual steps.
+
 Output Folder Creation:
 Creates an output directory containing all results for easy review.
 
