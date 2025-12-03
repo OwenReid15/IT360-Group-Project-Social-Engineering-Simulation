@@ -1,6 +1,6 @@
 # IT360-Group-Project
 
-*Add a project Description*
+Link to Video: [](https://youtu.be/u1itF6jbqog)
 
 Project Overview:
 This project is a digital forensics automation tool built using a Bash script.The tool combines three diffrent tools Hashdeep, Bulk Extractor, and ExifToolo quickly. This tool will be able to analyze large datasets, disk images, and evidence files.Its purpose is to speed up forensic analysis, reduce human error, and provide repeatable, consistent results.
