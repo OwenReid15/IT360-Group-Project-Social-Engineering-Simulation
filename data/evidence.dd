@@ -1,3 +1,24 @@
-This is the data set we used for the project. 
+Download the Dataset //The script supports any compatible dataset; however, this dataset was used for our testing
+Download the EPVME dataset directly from the GitHub repository:
 https://github.com/sunknighteric/EPVME-Dataset.git
 
+Select “Download ZIP” and save it to your machine.
+
+Extract the ZIP File
+Unzip the downloaded archive. This will create a folder containing all evidence files we used for testing.
+
+Run the Script
+When you execute the script, it will prompt you with:
+Enter the evidence file path:
+
+Provide the Full File Path
+You must enter the full absolute path to the specific evidence file you want to analyze — not just the file name.
+
+Correct example:
+C:/Users/YourName/Downloads/EPVME-Dataset/EPVME/epvme_01/epvme_01.dd
+
+Incorrect example:
+epvme_01.dd
+
+Make Sure the File Exists and You Have Permissions
+If the script can’t find the file, verify the path and make sure you didn’t miss quotes or capitalization.
